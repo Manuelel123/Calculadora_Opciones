@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "macros.html" import field, segmented, page_header %}
+{% block title %}Árbol binomial{% endblock %}
+
+{% block content %}
+{{ page_header("Modelo de Cox-Ross-Rubinstein", "Valoración por árbol binomial",
+   "Calcula la prima de opciones europeas y americanas por inducción hacia atrás y compárala con Black-Scholes.") }}
+
+<div class="workspace">
+  <form id="binomial-form" class="panel form-panel" novalidate>
+    <h2 class="panel-title">Contrato</h2>
+    {{ segmented("asset", "Subyacente", [("stock", "Acción"), ("dividend", "Con dividendos"), ("currency", "Divisa")], "stock") }}
+    {{ segmented("option_type", "Tipo de opción", [("call", "Call"), ("put", "Put")], "call") }}
+    {{ segmented("exercise", "Estilo de ejercicio", [("european", "Europea"), ("american", "Americana")], "european") }}
+
+    <h2 class="panel-title">Mercado</h2>
+    <div class="field-grid">
+      {{ field("spot", "Precio spot", 100, symbol="S₀", min=0) }}
+      {{ field("strike", "Strike", 100, symbol="K", min=0) }}
+      {{ field("rate", "Tasa libre de riesgo", 5, unit="%", symbol="r") }}
+      {{ field("volatility", "Volatilidad", 20, unit="%", symbol="σ", min=0) }}
+      {{ field("maturity", "Vencimiento", 1, unit="años", symbol="T", min=0) }}
+      {{ field("steps", "Pasos del árbol", 100, symbol="N", step=1, min=1, max=max_steps) }}
+      <div class="span-2" data-yield-field hidden>
+        {{ field("yield", "Rendimiento continuo", 0, unit="%", symbol="q") }}
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block">Calcular prima</button>
+    <p class="form-note">Los resultados se actualizan automáticamente al cambiar cualquier parámetro.</p>
+  </form>
+
+  <section class="results" aria-live="polite">
+    <div class="alert" id="binomial-error" hidden></div>
+
+    <div class="kpi-grid">
+      <div class="kpi kpi-hero">
+        <span class="kpi-label">Prima binomial</span>
+        <span class="kpi-value" data-out="price">—</span>
+        <span class="kpi-sub" data-out="price-sub">&nbsp;</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Black-Scholes</span>
+        <span class="kpi-value" data-out="black_scholes">—</span>
+        <span class="kpi-sub" data-out="bs-sub">&nbsp;</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label" data-out="diff-label">Diferencia</span>
+        <span class="kpi-value" data-out="diff">—</span>
+        <span class="kpi-sub" data-out="diff-sub">&nbsp;</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">Parámetros del árbol</h2>
+      <dl class="stat-row">
+        <div><dt>Δt</dt><dd data-out="dt">—</dd></div>
+        <div><dt>Factor de subida u</dt><dd data-out="u">—</dd></div>
+        <div><dt>Factor de bajada d</dt><dd data-out="d">—</dd></div>
+        <div><dt>Probabilidad neutral p</dt><dd data-out="p">—</dd></div>
+        <div><dt>Descuento por paso</dt><dd data-out="discount">—</dd></div>
+      </dl>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">Árbol de valoración</h2>
+        <div class="legend">
+          <span><i class="dot dot-node"></i>Nodo</span>
+          <span><i class="dot dot-early"></i>Ejercicio anticipado</span>
+        </div>
+      </div>
+      <p class="panel-note" data-out="tree-note"></p>
+      <div class="tree-scroll"><svg id="tree" class="tree" role="img" aria-label="Árbol binomial"></svg></div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">Convergencia del precio</h2>
+      <p class="panel-note">La prima binomial tiende al valor de Black-Scholes a medida que aumenta el número de pasos (en la opción europea).</p>
+      <div id="convergence-chart" class="chart"></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.3/plotly.min.js"></script>
+<script src="{{ url_for('static', filename='js/binomial.js') }}"></script>
+{% endblock %}

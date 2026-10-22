@@ -1,0 +1,39 @@
+{# Componentes de formulario reutilizables. #}
+
+{% macro field(name, label, value, unit=None, step="any", min=None, max=None, hint=None, symbol=None) %}
+<label class="field" data-field="{{ name }}">
+  <span class="field-label">
+    {{ label }}{% if symbol %} <em class="symbol">{{ symbol }}</em>{% endif %}
+  </span>
+  <span class="input-wrap{% if unit %} has-unit{% endif %}">
+    <input type="number" name="{{ name }}" value="{{ value }}" step="{{ step }}"
+      {% if min is not none %}min="{{ min }}"{% endif %} {% if max is not none %}max="{{ max }}"{% endif %}
+      inputmode="decimal" required>
+    {% if unit %}<span class="unit">{{ unit }}</span>{% endif %}
+  </span>
+  {% if hint %}<span class="field-hint">{{ hint }}</span>{% endif %}
+  <span class="field-error" role="alert"></span>
+</label>
+{% endmacro %}
+
+{% macro segmented(name, label, options, selected) %}
+<fieldset class="field">
+  <legend class="field-label">{{ label }}</legend>
+  <div class="segmented">
+    {% for value, text in options %}
+    <label>
+      <input type="radio" name="{{ name }}" value="{{ value }}" {{ 'checked' if value == selected }}>
+      <span>{{ text }}</span>
+    </label>
+    {% endfor %}
+  </div>
+</fieldset>
+{% endmacro %}
+
+{% macro page_header(eyebrow, title, description) %}
+<header class="page-header">
+  <p class="eyebrow">{{ eyebrow }}</p>
+  <h1>{{ title }}</h1>
+  <p class="lead">{{ description }}</p>
+</header>
+{% endmacro %}

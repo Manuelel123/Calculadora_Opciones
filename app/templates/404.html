@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Página no encontrada{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Error 404</p>
+  <h1>Página no encontrada</h1>
+  <p class="lead">La dirección que buscas no existe o fue movida.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('home.index') }}">Volver al inicio</a>
+  </div>
+</section>
+{% endblock %}

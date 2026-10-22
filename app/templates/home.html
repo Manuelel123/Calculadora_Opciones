@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Plataforma de valoración de derivados</p>
+  <h1>Calculadora de opciones financieras</h1>
+  <p class="lead">
+    Valora opciones europeas y americanas sobre acciones, divisas y activos con dividendos.
+    Compara modelos, revisa sus griegas y arma estrategias de varias posiciones.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('binomial.page') }}">Abrir árbol binomial</a>
+    <a class="btn btn-ghost" href="{{ url_for('black_scholes.page') }}">Abrir Black-Scholes</a>
+  </div>
+</section>
+
+<section class="model-grid">
+  <a class="model-card" href="{{ url_for('binomial.page') }}">
+    <div class="model-card-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="12" cy="17" r="2"/><circle cx="19" cy="4" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="19" cy="20" r="2"/><path d="m6.7 11 3.6-3M6.7 13l3.6 3M13.7 6l3.6-1.5M13.7 8l3.6 3M13.7 16l3.6-3M13.7 18l3.6 1.5"/></svg>
+    </div>
+    <h2>Árbol binomial</h2>
+    <p>Modelo de Cox-Ross-Rubinstein en tiempo discreto. Valora opciones europeas y americanas, muestra el árbol nodo a nodo y su convergencia.</p>
+    <ul class="tags">
+      <li>Europea</li><li>Americana</li><li>Convergencia</li><li>Ejercicio anticipado</li>
+    </ul>
+    <span class="card-link">Ir a la calculadora →</span>
+  </a>
+
+  <a class="model-card" href="{{ url_for('black_scholes.page') }}">
+    <div class="model-card-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M4 17c3 0 4-11 8-11s5 11 8 11"/></svg>
+    </div>
+    <h2>Black-Scholes</h2>
+    <p>Solución cerrada para opciones europeas con griegas completas, más un constructor de estrategias de hasta cuatro posiciones con su diagrama de pagos.</p>
+    <ul class="tags">
+      <li>Griegas</li><li>Paridad put-call</li><li>Estrategias</li><li>Payoff</li>
+    </ul>
+    <span class="card-link">Ir a la calculadora →</span>
+  </a>
+</section>
+
+<section class="info-grid">
+  <article class="info-card">
+    <h3>Subyacentes</h3>
+    <p>El rendimiento continuo <em>q</em> adapta ambos modelos: 0 para una acción sin dividendos, el dividend yield para una acción que paga dividendos o la tasa extranjera para una divisa (Garman-Kohlhagen).</p>
+  </article>
+  <article class="info-card">
+    <h3>Unidades</h3>
+    <p>Las tasas, la volatilidad y <em>q</em> se ingresan en porcentaje anual. El vencimiento <em>T</em> se ingresa en años: 6 meses equivalen a 0.5.</p>
+  </article>
+  <article class="info-card">
+    <h3>Griegas</h3>
+    <p>Vega y rho se expresan por un punto porcentual de cambio. Theta se expresa por día calendario.</p>
+  </article>
+</section>
+{% endblock %}
