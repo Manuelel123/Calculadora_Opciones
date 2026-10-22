@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% from "macros.html" import field, segmented, page_header %}
+{% block title %}Black-Scholes{% endblock %}
+
+{% block content %}
+{{ page_header("Modelo de Black-Scholes-Merton", "Valoración por Black-Scholes",
+   "Precio y griegas de opciones europeas, y un constructor de estrategias con su diagrama de pagos al vencimiento.") }}
+
+<div class="workspace">
+  <form id="market-form" class="panel form-panel" novalidate>
+    <h2 class="panel-title">Mercado</h2>
+    {{ segmented("asset", "Subyacente", [("stock", "Acción"), ("dividend", "Con dividendos"), ("currency", "Divisa")], "stock") }}
+    <div class="field-grid">
+      {{ field("spot", "Precio spot", 100, symbol="S₀", min=0) }}
+      {{ field("rate", "Tasa libre de riesgo", 5, unit="%", symbol="r") }}
+      {{ field("volatility", "Volatilidad", 20, unit="%", symbol="σ", min=0) }}
+      {{ field("maturity", "Vencimiento", 1, unit="años", symbol="T", min=0) }}
+      <div class="span-2" data-yield-field hidden>
+        {{ field("yield", "Rendimiento continuo", 0, unit="%", symbol="q") }}
+      </div>
+    </div>
+    <p class="form-note">Estos parámetros aplican tanto a la opción individual como a la estrategia.</p>
+  </form>
+
+  <section class="results">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" class="tab active" aria-selected="true" data-tab="single">Opción individual</button>
+      <button type="button" role="tab" class="tab" aria-selected="false" data-tab="strategy">Constructor de estrategias</button>
+    </div>
+
+    <div class="alert" id="bs-error" hidden></div>
+
+    {# --------------------------- Opción individual --------------------------- #}
+    <div class="tab-panel" data-panel="single" aria-live="polite">
+      <form id="single-form" class="panel inline-form" novalidate>
+        {{ segmented("option_type", "Tipo de opción", [("call", "Call"), ("put", "Put")], "call") }}
+        {{ field("strike", "Strike", 100, symbol="K", min=0) }}
+      </form>
+
+      <div class="kpi-grid">
+        <div class="kpi kpi-hero">
+          <span class="kpi-label" data-out="price-label">Prima call</span>
+          <span class="kpi-value" data-out="price">—</span>
+          <span class="kpi-sub" data-out="price-sub">&nbsp;</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Valor intrínseco</span>
+          <span class="kpi-value" data-out="intrinsic">—</span>
+          <span class="kpi-sub" data-out="moneyness">&nbsp;</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Valor temporal</span>
+          <span class="kpi-value" data-out="time_value">—</span>
+          <span class="kpi-sub">Prima − intrínseco</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Griegas</h2>
+        <div class="greeks">
+          <div class="greek"><span class="greek-symbol">Δ</span><span class="greek-name">Delta</span><span class="greek-value" data-out="delta">—</span><span class="greek-hint">por $1 en S</span></div>
+          <div class="greek"><span class="greek-symbol">Γ</span><span class="greek-name">Gamma</span><span class="greek-value" data-out="gamma">—</span><span class="greek-hint">por $1 en S</span></div>
+          <div class="greek"><span class="greek-symbol">ν</span><span class="greek-name">Vega</span><span class="greek-value" data-out="vega">—</span><span class="greek-hint">por 1 pp de σ</span></div>
+          <div class="greek"><span class="greek-symbol">Θ</span><span class="greek-name">Theta</span><span class="greek-value" data-out="theta">—</span><span class="greek-hint">por día</span></div>
+          <div class="greek"><span class="greek-symbol">ρ</span><span class="greek-name">Rho</span><span class="greek-value" data-out="rho">—</span><span class="greek-hint">por 1 pp de r</span></div>
+        </div>
+        <dl class="stat-row stat-row-compact">
+          <div><dt>d₁</dt><dd data-out="d1">—</dd></div>
+          <div><dt>d₂</dt><dd data-out="d2">—</dd></div>
+          <div><dt>Call</dt><dd data-out="call">—</dd></div>
+          <div><dt>Put</dt><dd data-out="put">—</dd></div>
+          <div><dt>Paridad C − P</dt><dd data-out="parity">—</dd></div>
+        </dl>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Precio frente al spot</h2>
+        <p class="panel-note">Valor de la opción hoy comparado con su valor intrínseco. La distancia entre ambas curvas es el valor temporal.</p>
+        <div id="price-chart" class="chart"></div>
+      </div>
+    </div>
+
+    {# --------------------------- Estrategias --------------------------- #}
+    <div class="tab-panel" data-panel="strategy" hidden aria-live="polite">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Posiciones</h2>
+          <label class="preset">
+            <span>Plantilla</span>
+            <select id="preset">
+              <option value="">Personalizada</option>
+              {% for key, preset in presets.items() %}
+              <option value="{{ key }}">{{ preset.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+
+        <div class="legs-head" aria-hidden="true">
+          <span>Lado</span><span>Tipo</span><span>Strike</span><span>Cantidad</span><span>Prima</span><span></span>
+        </div>
+        <div id="legs" class="legs"></div>
+
+        <button type="button" id="add-leg" class="btn btn-ghost btn-small">+ Agregar posición</button>
+        <span class="form-note" id="legs-limit">Máximo {{ max_legs }} posiciones.</span>
+      </div>
+
+      <div class="kpi-grid kpi-grid-4">
+        <div class="kpi">
+          <span class="kpi-label" data-out="net-label">Costo neto</span>
+          <span class="kpi-value" data-out="net">—</span>
+          <span class="kpi-sub" data-out="net-sub">&nbsp;</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Ganancia máxima</span>
+          <span class="kpi-value positive" data-out="max_profit">—</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Pérdida máxima</span>
+          <span class="kpi-value negative" data-out="max_loss">—</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Punto(s) de equilibrio</span>
+          <span class="kpi-value kpi-value-sm" data-out="breakevens">—</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Griegas netas del portafolio</h2>
+        <div class="greeks">
+          <div class="greek"><span class="greek-symbol">Δ</span><span class="greek-name">Delta</span><span class="greek-value" data-out="s-delta">—</span></div>
+          <div class="greek"><span class="greek-symbol">Γ</span><span class="greek-name">Gamma</span><span class="greek-value" data-out="s-gamma">—</span></div>
+          <div class="greek"><span class="greek-symbol">ν</span><span class="greek-name">Vega</span><span class="greek-value" data-out="s-vega">—</span></div>
+          <div class="greek"><span class="greek-symbol">Θ</span><span class="greek-name">Theta</span><span class="greek-value" data-out="s-theta">—</span></div>
+          <div class="greek"><span class="greek-symbol">ρ</span><span class="greek-name">Rho</span><span class="greek-value" data-out="s-rho">—</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Diagrama de pagos al vencimiento</h2>
+        <div id="payoff-chart" class="chart chart-tall"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<template id="leg-template">
+  <div class="leg">
+    <select name="side" aria-label="Lado">
+      <option value="long">Compra</option>
+      <option value="short">Venta</option>
+    </select>
+    <select name="option_type" aria-label="Tipo">
+      <option value="call">Call</option>
+      <option value="put">Put</option>
+    </select>
+    <input type="number" name="strike" step="any" min="0" aria-label="Strike" inputmode="decimal">
+    <input type="number" name="quantity" step="1" min="1" value="1" aria-label="Cantidad" inputmode="numeric">
+    <span class="leg-premium" data-premium>—</span>
+    <button type="button" class="icon-btn" data-remove aria-label="Eliminar posición">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+</template>
+
+<script id="presets-data" type="application/json">{{ presets | tojson }}</script>
+<script id="config-data" type="application/json">{{ {"maxLegs": max_legs} | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.3/plotly.min.js"></script>
+<script src="{{ url_for('static', filename='js/black_scholes.js') }}"></script>
+{% endblock %}

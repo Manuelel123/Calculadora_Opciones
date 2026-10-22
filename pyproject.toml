@@ -1,0 +1,19 @@
+[project]
+name = "calculadora-opciones"
+version = "0.1.0"
+description = "Calculadora de opciones financieras: árboles binomiales y Black-Scholes con Flask"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1",
+    "numpy>=2.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
