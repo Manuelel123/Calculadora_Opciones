@@ -263,7 +263,3 @@ uv run pytest
 | Frontend | Jinja2, JavaScript, Plotly.js, CSS |
 | Calidad | pytest |
 | Entorno | uv |
-
-## Créditos
-
-Basado en [calculadora-de-opciones-](https://github.com/jdzapata2004-eng/calculadora-de-opciones-), la versión original en Streamlit.
