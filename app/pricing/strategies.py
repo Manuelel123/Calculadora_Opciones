@@ -1,4 +1,8 @@
-"""Estrategias de varias patas valoradas con Black-Scholes."""
+"""Estrategias de varias patas valoradas con Black-Scholes.
+
+Una pata puede ser una opción (call o put) o el propio subyacente, que permite
+armar posiciones sintéticas como un call sintético (subyacente + put).
+"""
 
 from dataclasses import dataclass
 
@@ -11,9 +15,9 @@ GREEKS = ("delta", "gamma", "vega", "theta", "rho")
 
 @dataclass(frozen=True)
 class Leg:
-    option_type: str  # "call" | "put"
+    option_type: str  # "call" | "put" | "stock" (subyacente)
     side: str  # "long" | "short"
-    strike: float
+    strike: float  # en el subyacente se ignora: su "precio de entrada" es el spot
     quantity: int = 1
 
     @property
@@ -34,9 +38,20 @@ class StrategyResult:
     max_loss: float | None
 
 
+def _price_leg(leg: Leg, S: float, r: float, sigma: float, T: float, q: float) -> BlackScholesResult:
+    if leg.option_type == "stock":
+        # El subyacente cuesta el spot y solo es sensible a S: delta 1, resto de griegas 0.
+        return BlackScholesResult(
+            price=S, d1=0.0, d2=0.0, delta=1.0, gamma=0.0, vega=0.0, theta=0.0, rho=0.0, intrinsic=S, time_value=0.0
+        )
+    return price_black_scholes(S, leg.strike, r, sigma, T, leg.option_type, q)
+
+
 def leg_payoff(prices: np.ndarray, leg: Leg, premium: float) -> np.ndarray:
-    """P&L al vencimiento de una pata, ya neto de la prima."""
-    if leg.option_type == "call":
+    """P&L al vencimiento de una pata, ya neto de la prima (o del precio de compra del subyacente)."""
+    if leg.option_type == "stock":
+        intrinsic = prices
+    elif leg.option_type == "call":
         intrinsic = np.maximum(prices - leg.strike, 0.0)
     else:
         intrinsic = np.maximum(leg.strike - prices, 0.0)
@@ -60,13 +75,12 @@ def evaluate_strategy(
     q: float = 0.0,
     points: int = 600,
 ) -> StrategyResult:
-    priced: list[tuple[Leg, BlackScholesResult]] = [
-        (leg, price_black_scholes(S, leg.strike, r, sigma, T, leg.option_type, q)) for leg in legs
-    ]
+    legs = [Leg("stock", leg.side, S, leg.quantity) if leg.option_type == "stock" else leg for leg in legs]
+    priced: list[tuple[Leg, BlackScholesResult]] = [(leg, _price_leg(leg, S, r, sigma, T, q)) for leg in legs]
 
-    strikes = [leg.strike for leg in legs]
-    low = max(0.0, min(S, *strikes) * 0.5)
-    high = max(S, *strikes) * 1.5
+    strikes = [leg.strike for leg in legs if leg.option_type != "stock"]
+    low = max(0.0, min([S, *strikes]) * 0.5)
+    high = max([S, *strikes]) * 1.5
     # Los strikes se incluyen en la malla para que los vértices del payoff sean exactos.
     prices = np.union1d(np.linspace(low, high, points), strikes)
 
@@ -75,7 +89,7 @@ def evaluate_strategy(
 
     # Pendiente del payoff para S → ∞: con pendiente positiva la ganancia es ilimitada,
     # con negativa la pérdida es ilimitada. Hacia S → 0 el payoff siempre está acotado.
-    call_slope = sum(leg.sign * leg.quantity for leg in legs if leg.option_type == "call")
+    call_slope = sum(leg.sign * leg.quantity for leg in legs if leg.option_type in ("call", "stock"))
     at_zero = float(sum(leg_payoff(np.array([0.0]), leg, res.price)[0] for leg, res in priced))
     finite = [*total.tolist(), at_zero]
 

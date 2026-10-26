@@ -7,21 +7,24 @@ from ..pricing import Leg, evaluate_strategy, price_black_scholes
 
 bp = Blueprint("black_scholes", __name__)
 
-# Estrategias predefinidas: strikes como múltiplos del spot.
+# Estrategias predefinidas: strikes como múltiplos del spot ("stock" es el subyacente,
+# que entra siempre al spot y no usa strike).
 PRESETS = {
-    "long_call": ("Call largo", [("call", "long", 1.00)]),
-    "long_put": ("Put largo", [("put", "long", 1.00)]),
+    "long_synthetic_call": ("Largo call sintético", [("stock", "long", 1.00), ("put", "long", 1.00)]),
+    "short_synthetic_call": ("Corto call sintético", [("stock", "short", 1.00), ("put", "short", 1.00)]),
+    "long_synthetic_put": ("Largo put sintético", [("stock", "short", 1.00), ("call", "long", 1.00)]),
+    "short_synthetic_put": ("Corto put sintético", [("stock", "long", 1.00), ("call", "short", 1.00)]),
     "bull_call_spread": ("Bull call spread", [("call", "long", 0.95), ("call", "short", 1.05)]),
+    "bear_call_spread": ("Bear call spread", [("call", "short", 0.95), ("call", "long", 1.05)]),
+    "bull_put_spread": ("Bull put spread", [("put", "long", 0.95), ("put", "short", 1.05)]),
     "bear_put_spread": ("Bear put spread", [("put", "long", 1.05), ("put", "short", 0.95)]),
-    "straddle": ("Straddle largo", [("call", "long", 1.00), ("put", "long", 1.00)]),
-    "strangle": ("Strangle largo", [("call", "long", 1.10), ("put", "long", 0.90)]),
     "butterfly": (
-        "Mariposa con calls",
+        "Butterfly spread con calls",
         [("call", "long", 0.90), ("call", "short", 1.00), ("call", "short", 1.00), ("call", "long", 1.10)],
     ),
-    "iron_condor": (
-        "Iron condor",
-        [("put", "long", 0.85), ("put", "short", 0.95), ("call", "short", 1.05), ("call", "long", 1.15)],
+    "put_butterfly": (
+        "Butterfly spread con puts",
+        [("put", "long", 0.90), ("put", "short", 1.00), ("put", "short", 1.00), ("put", "long", 1.10)],
     ),
 }
 
@@ -73,11 +76,15 @@ def strategy():
     for i, raw in enumerate(raw_legs, start=1):
         if not isinstance(raw, dict):
             raise v.ValidationError(f"La posición {i} no es válida.", "legs")
+        option_type = v.choice(raw, "option_type", f"El tipo de la posición {i}", ("call", "put", "stock"))
         legs.append(
             Leg(
-                option_type=v.choice(raw, "option_type", f"El tipo de la posición {i}", ("call", "put")),
+                option_type=option_type,
                 side=v.choice(raw, "side", f"El lado de la posición {i}", ("long", "short")),
-                strike=v.number(raw, "strike", f"El strike de la posición {i}", min_value=0, exclusive_min=True),
+                # El subyacente entra al spot: no necesita strike.
+                strike=params["S"]
+                if option_type == "stock"
+                else v.number(raw, "strike", f"El strike de la posición {i}", min_value=0, exclusive_min=True),
                 quantity=v.integer(raw, "quantity", f"La cantidad de la posición {i}", min_value=1, max_value=1000),
             )
         )

@@ -1,5 +1,6 @@
 from math import exp
 
+import numpy as np
 import pytest
 
 from app.pricing import Leg, build_tree, evaluate_strategy, price_binomial, price_black_scholes
@@ -80,3 +81,58 @@ def test_unlimited_profit_and_loss_detected():
     short_call = evaluate_strategy([Leg("call", "short", 100)], S=100, r=0.05, sigma=0.2, T=1)
     assert long_call.max_profit is None and long_call.max_loss is not None
     assert short_call.max_loss is None and short_call.max_profit is not None
+
+
+@pytest.mark.parametrize(
+    "legs, replicated",
+    [
+        ([Leg("stock", "long", 0), Leg("put", "long", 100)], Leg("call", "long", 100)),
+        ([Leg("stock", "short", 0), Leg("put", "short", 100)], Leg("call", "short", 100)),
+        ([Leg("stock", "short", 0), Leg("call", "long", 100)], Leg("put", "long", 100)),
+        ([Leg("stock", "long", 0), Leg("call", "short", 100)], Leg("put", "short", 100)),
+    ],
+)
+def test_synthetic_positions_replicate_option(legs, replicated):
+    synthetic = evaluate_strategy(legs, S=100, r=0.05, sigma=0.2, T=1)
+    option = evaluate_strategy([replicated], S=100, r=0.05, sigma=0.2, T=1)
+    # Mismo perfil de pagos salvo una constante (el costo de financiamiento de K) y mismas griegas.
+    diff = np.subtract(synthetic.total_payoff, option.total_payoff)
+    assert np.ptp(diff) == pytest.approx(0, abs=1e-9)
+    for greek in ("delta", "gamma", "vega"):
+        assert synthetic.greeks[greek] == pytest.approx(option.greeks[greek])
+    assert (synthetic.max_profit is None) == (option.max_profit is None)
+    assert (synthetic.max_loss is None) == (option.max_loss is None)
+
+
+def test_stock_leg_is_priced_at_spot():
+    result = evaluate_strategy([Leg("stock", "long", 0)], S=100, r=0.05, sigma=0.2, T=1)
+    assert result.net_premium == 100
+    assert result.greeks["delta"] == 1
+    assert result.breakevens == [pytest.approx(100)]
+    assert result.max_profit is None and result.max_loss == pytest.approx(-100)
+
+
+@pytest.mark.parametrize(
+    "legs, credit",
+    [
+        ([Leg("call", "short", 95), Leg("call", "long", 105)], True),  # bear call spread
+        ([Leg("put", "long", 95), Leg("put", "short", 105)], True),  # bull put spread
+        ([Leg("put", "long", 105), Leg("put", "short", 95)], False),  # bear put spread
+    ],
+)
+def test_vertical_spreads_are_bounded(legs, credit):
+    result = evaluate_strategy(legs, S=100, r=0.05, sigma=0.2, T=1)
+    assert (result.net_premium < 0) == credit
+    assert result.max_profit is not None and result.max_loss is not None
+    assert result.max_profit - result.max_loss == pytest.approx(10)
+    assert len(result.breakevens) == 1
+
+
+@pytest.mark.parametrize("option_type", ["call", "put"])
+def test_butterfly_spread_metrics(option_type):
+    legs = [Leg(option_type, "long", 90), Leg(option_type, "short", 100, 2), Leg(option_type, "long", 110)]
+    result = evaluate_strategy(legs, S=100, r=0.05, sigma=0.2, T=1)
+    assert result.net_premium > 0
+    assert result.max_profit == pytest.approx(10 - result.net_premium)
+    assert result.max_loss == pytest.approx(-result.net_premium)
+    assert len(result.breakevens) == 2

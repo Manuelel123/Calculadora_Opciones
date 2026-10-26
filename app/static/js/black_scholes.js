@@ -107,8 +107,19 @@
     row.querySelector('[name="strike"]').value = leg.strike;
     row.querySelector('[name="quantity"]').value = leg.quantity;
     row.dataset.side = leg.side;
+    syncStockLeg(row);
     legsBox.appendChild(row);
     syncLegControls();
+  }
+
+  // El subyacente entra al spot: su campo de strike se bloquea y refleja S₀.
+  function syncStockLeg(row) {
+    const strike = row.querySelector('[name="strike"]');
+    const isStock = row.querySelector('[name="option_type"]').value === "stock";
+    if (isStock) strike.value = Number(marketForm.spot.value) || strike.value;
+    else if (strike.disabled) strike.value = Number(marketForm.spot.value) || 100;
+    strike.disabled = isStock;
+    strike.title = isStock ? "El subyacente se compra o vende al precio spot" : "";
   }
 
   function syncLegControls() {
@@ -179,10 +190,12 @@
     const total = data.total_payoff;
     const legColors = ["--chart-3", "--chart-4", "--chart-5", "--chart-2"].map(O.css);
     const sideText = { long: "Compra", short: "Venta" };
+    const legLabel = (leg) =>
+      leg.option_type === "stock" ? "subyacente" : `${leg.option_type} K=${O.fmt(leg.strike, 2)}`;
 
     const traces = data.legs.map((leg, i) => ({
       x, y: data.leg_payoffs[i], mode: "lines", opacity: 0.85,
-      name: `${sideText[leg.side]} ${leg.option_type} K=${O.fmt(leg.strike, 2)}${leg.quantity > 1 ? ` ×${leg.quantity}` : ""}`,
+      name: `${sideText[leg.side]} ${legLabel(leg)}${leg.quantity > 1 ? ` ×${leg.quantity}` : ""}`,
       line: { color: legColors[i % legColors.length], width: 1.5, dash: "dot" },
       hovertemplate: "%{y:.2f}",
     }));
@@ -258,7 +271,10 @@
   singleForm.addEventListener("submit", (e) => e.preventDefault());
 
   const debouncedActive = O.debounce(calculateActive, 300);
-  marketForm.addEventListener("input", (e) => { if (e.target.type !== "radio") debouncedActive(); });
+  marketForm.addEventListener("input", (e) => {
+    if (e.target.name === "spot") [...legsBox.children].forEach(syncStockLeg);
+    if (e.target.type !== "radio") debouncedActive();
+  });
 
   const debouncedSingle = O.debounce(calculateSingle, 300);
   singleForm.addEventListener("input", (e) => { if (e.target.type !== "radio") debouncedSingle(); });
@@ -268,6 +284,7 @@
   legsBox.addEventListener("input", (e) => {
     const row = e.target.closest(".leg");
     if (e.target.name === "side") row.dataset.side = e.target.value;
+    if (e.target.name === "option_type") syncStockLeg(row);
     presetSelect.value = "";
     debouncedStrategy();
   });
