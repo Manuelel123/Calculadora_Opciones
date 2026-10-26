@@ -9,6 +9,8 @@
 ![NumPy](https://img.shields.io/badge/NumPy-2.2-013243?logo=numpy&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)
 
+### [Abrir la app en vivo →](https://calculadora-opciones.onrender.com/)
+
 [Características](#características) ·
 [Inicio rápido](#inicio-rápido) ·
 [Modelos](#modelos) ·
@@ -67,6 +69,10 @@ Sirve como herramienta de estudio para cursos de derivados y como base reutiliza
 
 ## Inicio rápido
 
+La app está publicada en **<https://calculadora-opciones.onrender.com/>** y se puede usar desde cualquier navegador, sin instalar nada. Está en el plan gratuito de Render: si lleva un rato sin visitas, la primera carga puede tardar alrededor de un minuto.
+
+Para ejecutarla en tu propio equipo:
+
 ### Requisitos
 
 - [Python](https://www.python.org/) 3.12 o superior
@@ -81,7 +87,7 @@ uv sync
 uv run flask --app wsgi:app run --debug --port 5050
 ```
 
-Abre <http://127.0.0.1:5050> en el navegador.
+Abre <http://127.0.0.1:5050> en el navegador. Esa dirección es local: solo funciona en tu equipo mientras el servidor esté corriendo.
 
 | Página | Ruta |
 | --- | --- |
