@@ -456,6 +456,7 @@ input[type="number"]:focus, select:focus { outline: none; border-color: var(--pr
 .leg { padding: 8px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--positive); }
 .leg[data-side="short"] { border-left-color: var(--negative); }
 .leg.invalid { border-color: var(--negative); }
+.leg input:disabled { opacity: 0.6; cursor: not-allowed; }
 .leg-premium { font-size: 13px; color: var(--text-2); text-align: right; padding-right: 4px; }
 #add-leg + .form-note { margin-left: 12px; }
 

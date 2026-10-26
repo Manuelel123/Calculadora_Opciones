@@ -72,3 +72,22 @@ def test_strategy_rejects_too_many_legs(client):
     leg = {"side": "long", "option_type": "call", "strike": 100, "quantity": 1}
     res = client.post("/api/estrategias", json={**MARKET, "legs": [leg] * 5})
     assert res.status_code == 400
+
+
+def test_strategy_accepts_underlying_without_strike(client):
+    legs = [
+        {"side": "long", "option_type": "stock", "quantity": 1},
+        {"side": "long", "option_type": "put", "strike": 100, "quantity": 1},
+    ]
+    res = client.post("/api/estrategias", json={**MARKET, "legs": legs})
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body["legs"][0]["price"] == 100
+    assert body["max_profit"] is None and body["max_loss"] is not None
+
+
+def test_black_scholes_page_lists_new_presets(client):
+    html = client.get("/black-scholes").get_data(as_text=True)
+    for label in ("Largo call sintético", "Corto put sintético", "Bear call spread", "Bull put spread", "Butterfly spread con calls", "Butterfly spread con puts"):
+        assert label in html
+    assert "Iron condor" not in html

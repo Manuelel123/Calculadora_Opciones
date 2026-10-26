@@ -43,8 +43,11 @@ Sirve como herramienta de estudio para cursos de derivados y como base reutiliza
 
 ### Constructor de estrategias
 
-- Hasta **4 posiciones** (call/put, larga/corta, strike y cantidad).
-- Plantillas listas para usar: call y put largos, bull call spread, bear put spread, straddle, strangle, mariposa e iron condor.
+- Hasta **4 posiciones** (call, put o el propio subyacente; larga/corta, strike y cantidad). El subyacente entra al precio spot.
+- Plantillas listas para usar:
+  - **Posiciones sintéticas:** largo y corto call sintético (subyacente ± put), largo y corto put sintético (subyacente ∓ call).
+  - **Spreads verticales:** bull call spread, bear call spread, bull put spread y bear put spread.
+  - **Butterfly spread** con calls y con puts.
 - **Diagrama de pagos** al vencimiento por posición y total, **puntos de equilibrio**, **ganancia y pérdida máximas** (detecta cuándo son ilimitadas) y griegas agregadas.
 
 ### Tres tipos de subyacente
@@ -134,7 +137,7 @@ Todos los endpoints reciben y devuelven JSON.
 | `option_type` | `"call"` o `"put"` | — | binomial, black-scholes |
 | `exercise` | `"european"` o `"american"` | — | binomial |
 | `steps` | Número de pasos del árbol (1–5 000) | — | binomial |
-| `legs` | Lista de posiciones: `option_type`, `side` (`"long"`/`"short"`), `strike`, `quantity` | — | estrategias |
+| `legs` | Lista de posiciones: `option_type` (`"call"`/`"put"`/`"stock"`), `side` (`"long"`/`"short"`), `strike` (no aplica a `"stock"`), `quantity` | — | estrategias |
 
 > [!IMPORTANT]
 > Las tasas, la volatilidad y `q` se envían en **porcentaje**: `"rate": 5` equivale a 5 %. Vega y rho se expresan por 1 punto porcentual, y theta por día calendario.
