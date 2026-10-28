@@ -30,6 +30,8 @@ def test_binomial_endpoint(client):
     assert body["price"] == pytest.approx(6.09, abs=0.01)
     assert body["early_exercise_premium"] > 0
     assert body["tree"]["truncated"] is True
+    assert body["tree"]["total_steps"] == 200
+    assert body["tree"]["nodes"][0][0]["value"] == pytest.approx(body["price"])
     assert body["convergence"]["steps"][-1] == 200
 
 

@@ -61,6 +61,14 @@ def test_tree_root_matches_price_and_flags_early_exercise():
     assert any(node["early"] for col in tree for node in col)
 
 
+def test_truncated_tree_uses_all_steps():
+    tree = build_tree(**MARKET, N=200, option_type="put", exercise="american", levels=6)
+    price = price_binomial(**MARKET, N=200, option_type="put", exercise="american")
+    assert tree[0][0]["value"] == pytest.approx(price.price)
+    assert tree[1][0]["stock"] == pytest.approx(MARKET["S"] * price.u)
+    assert [len(col) for col in tree] == list(range(1, 8))
+
+
 def test_invalid_risk_neutral_probability_raises():
     with pytest.raises(ValueError):
         price_binomial(S=100, K=100, r=0.9, sigma=0.01, T=1, N=1)

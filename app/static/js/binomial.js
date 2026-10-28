@@ -55,7 +55,7 @@
 
     const t = data.tree;
     out("tree-note").textContent = t.truncated
-      ? `Se muestran los primeros ${t.steps} pasos, recalculados como un árbol de ${t.steps} pasos sobre el mismo vencimiento. El precio principal usa los ${payload.steps} pasos.`
+      ? `Se muestran los primeros ${t.steps} de los ${O.fmt(t.total_steps, 0)} pasos del árbol; los valores de la opción salen de la inducción hacia atrás completa, así que la raíz coincide con la prima.`
       : "Cada nodo muestra el precio del subyacente (arriba) y el valor de la opción (abajo).";
     drawTree(t.nodes);
     drawConvergence(data);

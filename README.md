@@ -33,7 +33,7 @@ Sirve como herramienta de estudio para cursos de derivados y como base reutiliza
 ### Árbol binomial (Cox-Ross-Rubinstein)
 
 - Opciones **europeas y americanas**, con hasta 5 000 pasos.
-- Visualización del **árbol nodo a nodo** (hasta 6 pasos), con precio del subyacente, valor de la opción y nodos de **ejercicio anticipado** resaltados.
+- Visualización del **árbol nodo a nodo** (los primeros 6 pasos del árbol de N pasos, con los mismos `u`, `d` y `p` que la prima), con precio del subyacente, valor de la opción y nodos de **ejercicio anticipado** resaltados.
 - Gráfico de **convergencia** del precio binomial hacia Black-Scholes a medida que crece el número de pasos.
 - **Prima por ejercicio anticipado** de la americana frente a la europea equivalente.
 
@@ -191,7 +191,7 @@ curl -X POST http://127.0.0.1:5050/api/binomial \
   "early_exercise_premium": 0.5153,
   "u": 1.009, "d": 0.9911, "p": 0.5034,
   "convergence": { "steps": [], "prices": [] },
-  "tree": { "steps": 6, "truncated": true, "nodes": [] }
+  "tree": { "steps": 6, "total_steps": 500, "truncated": true, "nodes": [] }
   // ...
 }
 ```

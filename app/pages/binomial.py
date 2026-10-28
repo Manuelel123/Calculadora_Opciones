@@ -31,7 +31,7 @@ def calculate():
             for n in convergence_steps
         ]
         tree_steps = min(steps, current_app.config["MAX_TREE_STEPS"])
-        tree = build_tree(**params, N=tree_steps, option_type=option_type, exercise=exercise)
+        tree = build_tree(**params, N=steps, option_type=option_type, exercise=exercise, levels=tree_steps)
     except ValueError as exc:
         raise v.ValidationError(str(exc)) from exc
 
@@ -44,6 +44,6 @@ def calculate():
             "black_scholes": reference,
             "early_exercise_premium": result.price - reference if exercise == "american" else None,
             "convergence": {"steps": convergence_steps, "prices": convergence},
-            "tree": {"steps": tree_steps, "truncated": tree_steps < steps, "nodes": tree},
+            "tree": {"steps": tree_steps, "total_steps": steps, "truncated": tree_steps < steps, "nodes": tree},
         }
     )

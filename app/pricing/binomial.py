@@ -87,34 +87,45 @@ def build_tree(
     option_type: str = "call",
     exercise: str = "european",
     q: float = 0.0,
+    levels: int | None = None,
 ) -> list[list[dict]]:
-    """Árbol completo para visualizarlo: tree[paso][nodo] con precio, valor y ejercicio anticipado.
+    """Primeros `levels` pasos del árbol de N pasos: tree[paso][nodo] con precio, valor y ejercicio anticipado.
 
-    Pensado para N pequeño; el nodo 0 de cada paso es el más alto.
+    La inducción hacia atrás recorre los N pasos (mismos dt, u, d y p que `price_binomial`), así que el
+    valor de la raíz coincide con la prima; solo se guardan los nodos hasta `levels`. El nodo 0 de cada
+    paso es el más alto.
     """
+    if exercise not in ("european", "american"):
+        raise ValueError(f"Estilo de ejercicio no válido: {exercise!r}")
+    levels = N if levels is None else min(levels, N)
     _, u, _, p, disc = _parameters(r, sigma, T, N, q)
     ladder = _price_ladder(S, u, N)
+    up, down = disc * p, disc * (1 - p)
 
-    stock = [_prices_at(ladder, N, step) for step in range(N + 1)]
-    option: list[np.ndarray] = [np.empty(0)] * (N + 1)
-    early: list[np.ndarray] = [np.zeros(N + 1, dtype=bool)] * (N + 1)
+    stock: list[np.ndarray] = [np.empty(0)] * (levels + 1)
+    option: list[np.ndarray] = [np.empty(0)] * (levels + 1)
+    early: list[np.ndarray] = [np.empty(0, dtype=bool)] * (levels + 1)
 
-    option[N] = _payoff(stock[N], K, option_type)
-    early[N] = np.zeros(N + 1, dtype=bool)
-    for step in range(N - 1, -1, -1):
-        continuation = disc * (p * option[step + 1][:-1] + (1 - p) * option[step + 1][1:])
-        if exercise == "american":
-            intrinsic = _payoff(stock[step], K, option_type)
-            early[step] = (intrinsic > continuation) & (intrinsic > 0)
-            option[step] = np.maximum(continuation, intrinsic)
-        else:
-            early[step] = np.zeros(step + 1, dtype=bool)
-            option[step] = continuation
+    values = _payoff(_prices_at(ladder, N, N), K, option_type)
+    flags = np.zeros(N + 1, dtype=bool)
+    for step in range(N, -1, -1):
+        if step < N:
+            values = up * values[:-1] + down * values[1:]
+            if exercise == "american":
+                intrinsic = _payoff(_prices_at(ladder, N, step), K, option_type)
+                flags = (intrinsic > values) & (intrinsic > 0)
+                values = np.maximum(values, intrinsic)
+            else:
+                flags = np.zeros(step + 1, dtype=bool)
+        if step <= levels:
+            stock[step] = _prices_at(ladder, N, step)
+            option[step] = values
+            early[step] = flags
 
     return [
         [
             {"stock": float(stock[step][j]), "value": float(option[step][j]), "early": bool(early[step][j])}
             for j in range(step + 1)
         ]
-        for step in range(N + 1)
+        for step in range(levels + 1)
     ]
